@@ -1,6 +1,8 @@
-const TelegramBot = require('node-telegram-bot-api');
+const TgBot = require('./classes/tgBot')
 const axios = require("axios");
-const {YANDEX_TOKEN} = require('./units/getIamToken')
+const {YANDEX_TOKEN} = require('./utils/getIamToken')
+const { getTranslateMessageId } = require('./utils/getMessageId')
+const pool = require('./database/db');
 
 require('dotenv').config();
 
@@ -11,7 +13,7 @@ const commands = [
     },
 ]
 
-const bot = new TelegramBot(process.env.API_KEY_BOT, {
+const bot = new TgBot(process.env.API_KEY_BOT, {
 
     polling: true
 
@@ -19,9 +21,15 @@ const bot = new TelegramBot(process.env.API_KEY_BOT, {
 
 bot.setMyCommands(commands).then((result) => console.log(result));
 
-// bot.on("polling_error", err => console.log(err.data.error.message));
+pool.query('SELECT NOW()', (err, res) => {
+    if(err) {
+        console.error('Error connecting to the database', err.stack);
+    } else {
+        console.log('Connected to the database:');
+    }
+});
 
-// bot.on("typing", message => console.log(message));
+// bot.on("polling_error", err => console.log(err.data.error.message));
 
 bot.on('text', async msg => {
     try {
@@ -29,6 +37,13 @@ bot.on('text', async msg => {
         if(msg.text === '/start') {
 
             console.log(msg.chat.id);
+            // pool.query(`INSERT INTO public.translated_messages(sasha_message_id, marvey_message_id) VALUES (4, 2);`, (err, res) => {
+            //     if(err) {
+            //         console.error('Error connecting to the database', err.stack);
+            //     } else {
+            //         // console.log('Connected to the database:', res);
+            //     }
+            // })
             await bot.sendMessage(msg.chat.id, `ID of chat: ${msg.chat.id}`);
 
         }
@@ -48,9 +63,13 @@ bot.on('text', async msg => {
                     }
                 })
                     .then(async (response) => {
-                        await bot.sendMessage(process.env.CHAT_MARVEY, response.data.translations[0].text, {
-                            reply_to_message_id: msg?.reply_to_message?.message_id
+                        await bot.sendPgMessage(msg, process.env.CHAT_MARVEY, response.data.translations[0].text, {
+                            reply_to_message_id: msg?.reply_to_message?.message_id ? await getTranslateMessageId(msg.chat.id, msg?.reply_to_message?.message_id) : null
                         })
+                        // await bot.sendMessage(process.env.CHAT_MARVEY, msg.message_id + ' ' + await getTranslateMessageId(msg.chat.id, msg.message_id))
+                        // console.log(await getTranslateMessageId(process.env.CHAT_SASHA, msg?.reply_to_message?.message_id))
+                        // if (msg?.reply_to_message?.message_id)
+                        //     console.log(await getTranslateMessageId(process.env.CHAT_SASHA, msg?.reply_to_message?.message_id))
                     })
                     .catch(async (error) => {
                         console.log(error)
@@ -72,8 +91,8 @@ bot.on('text', async msg => {
                     }
                 })
                     .then(async (response) => {
-                        await bot.sendMessage(process.env.CHAT_SASHA, response.data.translations[0].text, {
-                            reply_to_message_id: msg?.reply_to_message?.message_id
+                        await bot.sendPgMessage(msg, process.env.CHAT_SASHA, response.data.translations[0].text, {
+                            reply_to_message_id: msg?.reply_to_message?.message_id ? await getTranslateMessageId(msg.chat.id, msg?.reply_to_message?.message_id) : null
                         })
                     })
                     .catch(async (error) => {
@@ -81,6 +100,9 @@ bot.on('text', async msg => {
                         await bot.sendMessage(process.env.CHAT_SASHA, `Sorry, my mistake: \n\n${error?.response?.body?.description ?? error?.response?.data?.message}`)
                         await bot.sendMessage(process.env.CHAT_MARVEY, `Sorry, my mistake: \n\n${error?.response?.body?.description ?? error?.response?.data?.message}`)
                     });
+            }
+            else {
+                bot.sendMessage(msg.chat.id, `How did you get here? You don't belong here.`)
             }
 
             // await bot.sendMessage(msg.chat.id, `Chat ID: ${msg.chat.id}\n\n Message ID: ${msg.message_id} \n\n Reply ID: ${msg?.reply_to_message?.message_id}`)
