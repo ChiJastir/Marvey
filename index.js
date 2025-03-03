@@ -114,3 +114,16 @@ bot.on('text', async msg => {
 
     }
 })
+
+bot.on('sticker', async sticker => {
+    if (sticker.chat.id == process.env.CHAT_SASHA) {
+        await bot.sendPgAnimation(sticker, process.env.CHAT_MARVEY, sticker.sticker.file_id, {
+            reply_to_message_id: sticker?.reply_to_message?.message_id ? await getTranslateMessageId(sticker.chat.id, sticker?.reply_to_message?.message_id) : null
+        })
+    }
+    else if (sticker.chat.id == process.env.CHAT_MARVEY) {
+        await bot.sendPgAnimation(sticker, process.env.CHAT_SASHA, sticker.sticker.file_id, {
+            reply_to_message_id: sticker?.reply_to_message?.message_id ? await getTranslateMessageId(sticker.chat.id, sticker?.reply_to_message?.message_id) : null
+        })
+    }
+})
