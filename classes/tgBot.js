@@ -1,5 +1,6 @@
 const TelegramBot = require('node-telegram-bot-api');
 const pool = require('../database/db');
+const {getTranslateMessageId} = require("../utils/getMessageId");
 require('dotenv').config();
 
 function WhoIsWho(chatId, sendMessageId, newMessageId) {
@@ -36,6 +37,15 @@ class TgBot extends TelegramBot{
         const { sasha, marvey } = WhoIsWho(message.chat.id, message.message_id, newMessage.message_id);
 
         await DbMessageSave(sasha, marvey)
+
+        return newMessage
+    }
+
+    async editPgMessageText(message, chatId, text){
+        const newMessage = await super.editMessageText(text, {
+            chat_id: chatId,
+            message_id: await getTranslateMessageId(message.chat.id, message.message_id)
+        })
 
         return newMessage
     }
